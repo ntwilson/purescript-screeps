@@ -1,8 +1,15 @@
+# VS Code
+.vscode
+
 # Dependencies
 .psci_modules
 bower_components
 node_modules
+.spago
 
 # Generated files
 .psci
 output
+index.js
+.psc-ide-port
+.purs-repl
