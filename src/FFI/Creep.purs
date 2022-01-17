@@ -1,17 +1,19 @@
-module Screeps.Creep
+module Screeps.FFI.Creep
   ( Creep(..)
-  , Payload
   , StatusCode
   , build
   , err_not_in_range
+  , find_hostile_creeps
   , getMem
   , harvest
   , moveTo
   , moveToAndVisualize
-  , resource_energy
+  , name
+  , ok
   , room
   , say
   , setMem
+  , suicide
   , transfer
   , upgradeController
   )
@@ -24,29 +26,27 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError,
 import Data.Function.Uncurried (Fn2, runFn2)
 import Effect (Effect)
 import Effect.Uncurried (EffectFn2, runEffectFn1, runEffectFn2)
-import Screeps.ConstructionSite (ConstructionSite)
-import Screeps.Controller (Controller)
-import Screeps.Room (Room)
-import Screeps.RoomPosition (class HasRoomPosition)
-import Screeps.Source (Source)
-import Screeps.Store (class HasStore)
+import Screeps.FFI.ConstructionSite (ConstructionSite)
+import Screeps.FFI.Controller (Controller)
+import Screeps.FFI.Find (FindTarget)
+import Screeps.FFI.Room (Room)
+import Screeps.FFI.RoomPosition (class HasRoomPosition, defaultPosition)
+import Screeps.FFI.Source (Source)
+import Screeps.FFI.Store (class HasStore, Resource)
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import data StatusCode :: Type
 instance Eq StatusCode where
   eq = runFn2 statusCodeEq
 foreign import err_not_in_range :: StatusCode
+foreign import ok :: StatusCode
 foreign import statusCodeEq :: Fn2 StatusCode StatusCode Boolean
 
-foreign import data Payload :: Type
-instance Eq Payload where
-  eq = runFn2 payloadEq
-foreign import payloadEq :: Fn2 Payload Payload Boolean
-foreign import resource_energy :: Payload
-
 foreign import data Creep :: Type
-instance HasRoomPosition Creep
+instance HasRoomPosition Creep where pos = defaultPosition 
 instance HasStore Creep where store s = (unsafeCoerce s).store
+
+foreign import find_hostile_creeps :: FindTarget Creep
 
 room :: Creep -> Room 
 room = unsafeCoerce >>> _.room
@@ -62,8 +62,8 @@ moveToAndVisualize :: ∀ a. HasRoomPosition a => a -> String -> Creep -> Effect
 moveToAndVisualize target strokeColor creep = 
   runEffectFn2 (unsafeCoerce creep).moveTo target { visualizePathStyle: {stroke: strokeColor} }
 
-transfer :: ∀ a. a -> Payload -> Creep -> Effect StatusCode
-transfer target payload creep = 
+transfer :: ∀ a. a -> Resource -> Creep -> Effect StatusCode
+transfer target payload creep =
   runEffectFn2 (unsafeCoerce creep).transfer target payload
 
 upgradeController :: Controller -> Creep -> Effect StatusCode
@@ -88,3 +88,10 @@ setMem mem creep = runEffectFn2 setMemImpl (encodeJson mem) creep
 
 build :: ConstructionSite -> Creep -> Effect StatusCode
 build target creep = runEffectFn1 (unsafeCoerce creep).build target
+
+suicide :: Creep -> Effect Unit
+suicide creep = (unsafeCoerce creep).suicide
+
+name :: Creep -> String
+name creep = (unsafeCoerce creep).name
+

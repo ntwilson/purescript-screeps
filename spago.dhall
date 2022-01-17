@@ -14,6 +14,8 @@ You can edit this file as you like.
   , "foreign"
   , "foreign-object"
   , "functions"
+  , "interpolate"
+  , "lists"
   , "maybe"
   , "newtype"
   , "prelude"

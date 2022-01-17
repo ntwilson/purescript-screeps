@@ -1,20 +1,15 @@
-module Screeps.Room where
+module Screeps.FFI.Room where
 
 import Prelude
 
+import Data.Function.Uncurried (runFn2)
 import Data.Maybe (Maybe(..))
+import Effect (Effect)
+import Effect.Uncurried (runEffectFn4)
 import Foreign (isUndefined)
-import Screeps.ConstructionSite (ConstructionSite)
-import Screeps.Controller (Controller)
-import Screeps.Source (Source)
-import Screeps.Structure (Structure)
+import Screeps.FFI.Controller (Controller)
+import Screeps.FFI.Find (FindTarget)
 import Unsafe.Coerce (unsafeCoerce)
-
-foreign import data FindTarget :: Type -> Type 
-
-foreign import find_sources :: FindTarget Source
-foreign import find_construction_sites :: FindTarget ConstructionSite
-foreign import find_structures :: FindTarget Structure
 
 foreign import data Room :: Type
 
@@ -22,7 +17,7 @@ find :: ∀ findType. FindTarget findType -> Room -> Array findType
 find target room = (unsafeCoerce room).find target
 
 findWhere :: ∀ findType. FindTarget findType -> (findType -> Boolean) -> Room -> Array findType
-findWhere target filter room = (unsafeCoerce room).find target { filter }
+findWhere target filter room = runFn2 (unsafeCoerce room).find target { filter }
 
 controller :: Room -> Maybe Controller
 controller room = 
@@ -33,3 +28,8 @@ controller room =
   where
   thisRoomController = (unsafeCoerce room).controller 
 
+energyAvailable :: Room -> Int 
+energyAvailable room = (unsafeCoerce room).energyAvailable
+
+setRoomText :: {msg :: String, x :: Int, y :: Int} -> Room -> Effect Unit 
+setRoomText {msg, x, y} room = runEffectFn4 (unsafeCoerce room).visual.text msg x y {align: "left"}
