@@ -11,6 +11,6 @@ type Game =
   , time :: Int
   }
 
-foreign import game :: Game
+foreign import game :: Effect Game
 
 foreign import getUsedCpu :: Effect Number

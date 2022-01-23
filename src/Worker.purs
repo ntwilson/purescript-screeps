@@ -176,7 +176,7 @@ runWorker allCreeps {creep, memory} = case memory of
     else pure unit
 
 allWorkers :: Effect (Array {creep :: Creep, memory :: Job})
-allWorkers = Array.fromFoldable game.creeps # traverse folder <#> Array.mapMaybe hush 
+allWorkers = game >>= \{creeps} -> Array.fromFoldable creeps # traverse folder <#> Array.mapMaybe hush 
   where 
     folder creep = do
       result <- runExceptT $ Creep.getMem creep

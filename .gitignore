@@ -11,6 +11,5 @@ node_modules
 .psci
 output
 index.js
-output.js
 .psc-ide-port
 .purs-repl

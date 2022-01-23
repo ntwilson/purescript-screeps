@@ -16,10 +16,12 @@ import Screeps.Tower (runTower, towers)
 import Screeps.Worker (allWorkers, runWorker)
 import Utils (orThrowError)
 
+foreign import setLoop :: EffectFn1 (Effect Unit) Unit
+
 main :: Effect Unit
-main = do
+main = runEffectFn1 setLoop do
   clearMemory
-  spawn <- game.spawns # Array.fromFoldable # Array.head # orThrowError "No Spawns found" 
+  spawn <- game >>= \{spawns} -> spawns # Array.fromFoldable # Array.head # orThrowError "No Spawns found" 
   let room = spawn # Spawn.room
 
   _ <- tryAndLog do
@@ -43,6 +45,7 @@ main = do
       Right _ -> pure unit
 
   clearMemory = do
-    {creeps} <- memory
-    for_ (Object.keys creeps) $ \creep -> 
-      if not Object.member creep game.creeps then Memory.deleteCreepByName creep else pure unit
+    {creeps:memCreeps} <- memory
+    {creeps:gameCreeps} <- game
+    for_ (Object.keys memCreeps) $ \creep -> 
+      if not Object.member creep gameCreeps then Memory.deleteCreepByName creep else pure unit

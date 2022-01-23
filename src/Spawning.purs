@@ -18,11 +18,13 @@ workerBodyParts capacity
 
 spawnWorker :: Spawn -> Effect Unit
 spawnWorker spawn = do
-  let capacity = Room.energyCapacityAvailable (Spawn.room spawn)
+  {time} <- game
+  let 
+    name = i"Worker"time
+    capacity = Room.energyCapacityAvailable (Spawn.room spawn)
   result <- spawnCreepWithMemory (workerBodyParts capacity) name Harvest spawn
   if result == spawnOk 
   then spawn # Spawn.say "Spawning Worker"
   else pure unit
 
-  where 
-  name = i"Worker"game.time
+
