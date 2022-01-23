@@ -3,6 +3,7 @@ module Screeps.FFI.Spawn
   , Spawn
   , SpawnStatus
   , isStructureSpawn
+  , room
   , say
   , spawnCreep
   , spawnCreepWithMemory
@@ -21,19 +22,21 @@ import Data.Show.Generic (genericShow)
 import Data.String (toUpper)
 import Effect (Effect)
 import Effect.Uncurried (EffectFn4, runEffectFn4)
+import FFI.Hits (class HasHits)
 import Foreign (Foreign, isNull)
 import Screeps.FFI.Room (Room, setRoomText)
-import Screeps.FFI.RoomPosition (class HasRoomPosition, defaultPosition, pos)
+import Screeps.FFI.RoomPosition (class HasRoomPosition)
 import Screeps.FFI.Store (class HasStore)
 import Screeps.FFI.Structure (class OfStructure, Structure, defaultOfStructure)
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import data Spawn :: Type
-instance HasRoomPosition Spawn where pos = defaultPosition 
+instance HasRoomPosition Spawn
 instance HasStore Spawn where store s = (unsafeCoerce s).store
 
 foreign import isStructureSpawn :: Structure -> Boolean
 
+instance HasHits Spawn
 instance OfStructure Spawn where ofStructure = defaultOfStructure isStructureSpawn
 
 foreign import work :: Foreign
@@ -73,6 +76,6 @@ room :: Spawn -> Room
 room spawn = (unsafeCoerce spawn).room
 
 say :: String -> Spawn -> Effect Unit
-say msg spawn = setRoomText {msg, x, y} (room spawn)
-  where 
-  {x, y} = pos spawn
+say msg spawn = setRoomText {msg, x: (unsafeCoerce spawn).pos.x, y: (unsafeCoerce spawn).pos.y} (room spawn)
+
+

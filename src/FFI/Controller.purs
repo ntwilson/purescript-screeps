@@ -3,11 +3,17 @@ module Screeps.FFI.Controller where
 import Prelude
 
 import Effect (Effect)
-import Screeps.FFI.RoomPosition (class HasRoomPosition, defaultPosition)
+import FFI.Hits (class HasHits)
+import Screeps.FFI.RoomPosition (class HasRoomPosition)
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import data Controller :: Type
-instance HasRoomPosition Controller where pos = defaultPosition 
+  
+instance HasHits Controller
+instance HasRoomPosition Controller
 
 activateSafeMode :: Controller -> Effect Unit
 activateSafeMode controller = (unsafeCoerce controller).activateSafeMode
+
+canActivateSafeMode :: Controller -> Boolean
+canActivateSafeMode controller = (unsafeCoerce controller).safeModeAvailable > 0

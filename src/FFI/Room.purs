@@ -31,5 +31,8 @@ controller room =
 energyAvailable :: Room -> Int 
 energyAvailable room = (unsafeCoerce room).energyAvailable
 
+energyCapacityAvailable :: Room -> Int 
+energyCapacityAvailable room = (unsafeCoerce room).energyCapacityAvailable
+
 setRoomText :: {msg :: String, x :: Int, y :: Int} -> Room -> Effect Unit 
 setRoomText {msg, x, y} room = runEffectFn4 (unsafeCoerce room).visual.text msg x y {align: "left"}

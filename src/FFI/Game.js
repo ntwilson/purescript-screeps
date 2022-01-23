@@ -1,2 +1,2 @@
 exports.game = Game;
-exports.memory = function () { return Memory };
+exports.getUsedCpu = function () { return Game.cpu.getUsed(); };

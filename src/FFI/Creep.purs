@@ -4,12 +4,14 @@ module Screeps.FFI.Creep
   , build
   , err_not_in_range
   , find_hostile_creeps
+  , find_my_creeps
   , getMem
   , harvest
   , moveTo
   , moveToAndVisualize
   , name
   , ok
+  , repair
   , room
   , say
   , setMem
@@ -25,14 +27,16 @@ import Control.Monad.Except (ExceptT, except, lift)
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError, decodeJson, encodeJson)
 import Data.Function.Uncurried (Fn2, runFn2)
 import Effect (Effect)
-import Effect.Uncurried (EffectFn2, runEffectFn1, runEffectFn2)
+import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
+import FFI.Hits (class HasHits)
 import Screeps.FFI.ConstructionSite (ConstructionSite)
 import Screeps.FFI.Controller (Controller)
 import Screeps.FFI.Find (FindTarget)
 import Screeps.FFI.Room (Room)
-import Screeps.FFI.RoomPosition (class HasRoomPosition, defaultPosition)
+import Screeps.FFI.RoomPosition (class HasRoomPosition)
 import Screeps.FFI.Source (Source)
 import Screeps.FFI.Store (class HasStore, Resource)
+import Screeps.FFI.Structure (class OfStructure, toStructure)
 import Unsafe.Coerce (unsafeCoerce)
 
 foreign import data StatusCode :: Type
@@ -43,10 +47,12 @@ foreign import ok :: StatusCode
 foreign import statusCodeEq :: Fn2 StatusCode StatusCode Boolean
 
 foreign import data Creep :: Type
-instance HasRoomPosition Creep where pos = defaultPosition 
+instance HasHits Creep
+instance HasRoomPosition Creep
 instance HasStore Creep where store s = (unsafeCoerce s).store
 
 foreign import find_hostile_creeps :: FindTarget Creep
+foreign import find_my_creeps :: FindTarget Creep
 
 room :: Creep -> Room 
 room = unsafeCoerce >>> _.room
@@ -73,14 +79,11 @@ upgradeController target creep =
 say :: String -> Creep -> Effect Unit
 say msg creep = runEffectFn1 (unsafeCoerce creep).say msg
 
+foreign import getRawMem :: EffectFn1 Creep Json
 getMem :: ∀ a. DecodeJson a => Creep -> ExceptT JsonDecodeError Effect a
-getMem creep = do 
-  mem <- lift getRawMem
+getMem creep = do
+  mem <- lift $ runEffectFn1 getRawMem creep
   except $ decodeJson mem
-
-  where 
-  getRawMem :: Effect Json
-  getRawMem = pure (unsafeCoerce creep).memory
 
 foreign import setMemImpl :: EffectFn2 Json Creep Unit
 setMem :: ∀ a. EncodeJson a => a -> Creep -> Effect Unit
@@ -95,3 +98,5 @@ suicide creep = (unsafeCoerce creep).suicide
 name :: Creep -> String
 name creep = (unsafeCoerce creep).name
 
+repair :: ∀ struct. OfStructure struct => struct -> Creep -> Effect StatusCode
+repair struct creep = runEffectFn1 (unsafeCoerce creep).repair (toStructure struct)

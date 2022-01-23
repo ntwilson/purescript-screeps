@@ -13,7 +13,4 @@ type Game =
 
 foreign import game :: Game
 
-type Memory = 
-  { creeps :: Object Creep }
-
-foreign import memory :: Effect Memory
+foreign import getUsedCpu :: Effect Number
