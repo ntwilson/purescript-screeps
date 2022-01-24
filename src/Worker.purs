@@ -9,13 +9,15 @@ import Data.Lazy (defer)
 import FFI.Hits (hits, hitsMax, hitsPercent)
 import Foreign.Object as Object
 import Screeps.FFI.ConstructionSite (ConstructionSite)
+import Screeps.FFI.Controller as Controller
 import Screeps.FFI.Creep (err_not_in_range, ok)
 import Screeps.FFI.Creep as Creep
 import Screeps.FFI.Room as Room
 import Screeps.FFI.RoomPosition as RoomPosition
+import Screeps.FFI.Spawn as Spawn
 import Screeps.FFI.Store as Store
 import Screeps.FFI.Structure (Structure)
-import Utils (noteL)
+import Utils (noteL, orThrowError)
 
 data Job = Harvest | StoreEnergy | Build | Upgrade
 allJobs :: Array Job
@@ -45,10 +47,10 @@ whatJobShouldIPick nHarvesters nBuilders nUpgraders creep = go
     | nBuilders < 1 
     , isJust (anythingToBuild creep) || isJust (anythingWorthRepairing creep) = Build
     | nUpgraders < 1 = Upgrade
+    | Int.toNumber nHarvesters / Int.toNumber nEmployedCreeps < 0.2 = StoreEnergy
     | Int.toNumber nBuilders / Int.toNumber nEmployedCreeps < 0.35 
     , isJust (anythingToBuild creep) || isJust (anythingAtAllToRepair creep) = Build
-    | Int.toNumber nUpgraders / Int.toNumber nEmployedCreeps < 0.35 = Upgrade
-    | otherwise = StoreEnergy
+    | otherwise = Upgrade
 
 anythingWorthRepairing :: Creep -> Maybe Structure
 anythingWorthRepairing creep = 
@@ -100,39 +102,42 @@ runWorker allCreeps {creep, memory} = case memory of
       StoreEnergy -> do
         creep # Creep.say "📦 depositing"
         creep # Creep.setMem StoreEnergy
-        depositEnergy
 
       Build -> do
         creep # Creep.say "🚧 build"
         creep # Creep.setMem Build
-        buildSomething
 
       Upgrade -> do
         creep # Creep.say "⚡ upgrade"
         creep # Creep.setMem Upgrade
-        upgradeSomething 
 
       Harvest -> do
         creep # Creep.say "🔄 harvest"
         creep # Creep.setMem Harvest
-        harvestEnergy
 
-  depositEnergy = 
+  depositEnergy = do
+    spawn <- game >>= \{spawns} -> spawns # Array.fromFoldable # Array.head # orThrowError "No Spawns found" 
     let 
       tower = creep # RoomPosition.findClosestByPathWhere find_my_structures \structure ->
         (structure # isStructureTower)
         && 
         (store structure # Store.freeCapacity resource_energy) > 0
 
-      targets = creep # RoomPosition.findClosestByPathWhere find_my_structures \structure ->
+      targetsInRoom = creep # RoomPosition.findClosestByPathWhere find_my_structures \structure ->
         any (_ $ structure) [isStructureSpawn, isStructureExtension] 
         && 
         (store structure # Store.freeCapacity resource_energy) > 0
 
-    in case tower, targets of 
-      Nothing, Nothing -> stuck
-      Just target, _ -> depositTo target
-      _, Just target -> depositTo target
+      targetsBySpawn = spawn # RoomPosition.findClosestByPathWhere find_my_structures \structure ->
+        any (_ $ structure) [isStructureSpawn, isStructureExtension] 
+        && 
+        (store structure # Store.freeCapacity resource_energy) > 0
+
+    case tower, targetsInRoom, targetsBySpawn of 
+      Nothing, Nothing, Nothing -> stuck
+      Just target, _, _ -> depositTo target
+      _, Just target, _ -> depositTo target
+      _, _, Just target -> depositTo target
 
     where 
     depositTo target = do
@@ -141,14 +146,20 @@ runWorker allCreeps {creep, memory} = case memory of
       then creep # Creep.moveToAndVisualize target "#ffffff"
       else pure unit
 
-  upgradeSomething = 
-    case creep # Creep.room # Room.controller of 
-      Nothing -> stuck
-      Just controller -> do
+  upgradeSomething = do
+    spawn <- game >>= \{spawns} -> spawns # Array.fromFoldable # Array.head # orThrowError "No Spawns found" 
+    case creep # Creep.room # Room.controller, spawn # Spawn.room # Room.controller of 
+      Just controller, _ | controller # Controller.my -> do
         result <- creep # Creep.upgradeController controller
         if result == err_not_in_range 
         then creep # Creep.moveToAndVisualize controller "#ffffff"
         else pure unit
+      _, Just controller -> do 
+        result <- creep # Creep.upgradeController controller
+        if result == err_not_in_range 
+        then creep # Creep.moveToAndVisualize controller "#ffffff"
+        else pure unit
+      _, _ -> stuck
 
   buildSomething = 
     case anythingWorthRepairing creep, anythingToBuild creep, anythingAtAllToRepair creep of
@@ -159,9 +170,7 @@ runWorker allCreeps {creep, memory} = case memory of
 
   stuck = do
     creep # Creep.say "☹️ stuck"
-    case creep # Creep.room # Room.controller of 
-      Nothing -> pure unit
-      Just controller -> creep # Creep.moveToAndVisualize controller "#ddffff"
+    findAJob
 
   repair struct = do
     result <- creep # Creep.repair struct

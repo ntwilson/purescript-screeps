@@ -17,3 +17,7 @@ activateSafeMode controller = (unsafeCoerce controller).activateSafeMode
 
 canActivateSafeMode :: Controller -> Boolean
 canActivateSafeMode controller = (unsafeCoerce controller).safeModeAvailable > 0
+
+my :: Controller -> Boolean
+my controller = (unsafeCoerce controller).my
+

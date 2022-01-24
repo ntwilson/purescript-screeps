@@ -14,7 +14,10 @@ workerBodyParts capacity
   | capacity <= 400 = [Move, Move, Carry, Carry, Work, Work]
   | capacity <= 500 = [Move, Move, Carry, Carry, Work, Work, Work]
   | capacity <= 550 = [Move, Move, Move, Carry, Carry, Work, Work, Work]
-  | otherwise = [Move, Move, Move, Carry, Carry, Carry, Work, Work, Work]
+  | capacity <= 650 = [Move, Move, Move, Carry, Carry, Carry, Work, Work, Work]
+  | capacity <= 700 = [Move, Move, Move, Carry, Carry, Carry, Work, Work, Work, Work]
+  | capacity <= 750 = [Move, Move, Move, Move, Carry, Carry, Carry, Work, Work, Work, Work]
+  | otherwise = [Move, Move, Move, Move, Carry, Carry, Carry, Carry, Work, Work, Work, Work]
 
 spawnWorker :: Spawn -> Effect Unit
 spawnWorker spawn = do
